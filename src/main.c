@@ -54,12 +54,10 @@
 
 #define MAX_LIST 20
 
-typedef struct
-{
-    uint32_t type;
-    uint32_t color;
-    char filename[MAX_FILENAME_LEN + 1];
-} direntry_t;
+#include "direntry.h"
+#include "nso_ui.h"
+
+int nso_mode = 0;
 
 
 //ini file
@@ -421,6 +419,7 @@ void new_scroll_pos(int *cursor, int *page, int max, int count)
 
 void display_dir(direntry_t *list, int cursor, int page, int max, int count, display_context_t disp)
 {
+    if (nso_mode) { nso_draw_grid(list, cursor, count, disp); return; }
     //system color
     uint32_t forecolor = 0;
     uint32_t forecolor_menu = 0;
@@ -3215,6 +3214,17 @@ void handleInput(display_context_t disp, sprite_t *contr)
         {
         case file_manager:
 
+        if (nso_mode)
+        {
+            if (count != 0 && cursor - NSO_COLS >= 0)
+                cursor -= NSO_COLS;
+            while (!(disp = display_lock()));
+            clearScreen(disp);
+            display_dir(list, cursor, page, MAX_LIST, count, disp);
+            display_show(disp);
+            break;
+        }
+
         if (sound_on)
         playSound(4);
 
@@ -3290,6 +3300,17 @@ void handleInput(display_context_t disp, sprite_t *contr)
         {
         case file_manager:
 
+        if (nso_mode)
+        {
+            if (count != 0 && cursor + NSO_COLS < count)
+                cursor += NSO_COLS;
+            while (!(disp = display_lock()));
+            clearScreen(disp);
+            display_dir(list, cursor, page, MAX_LIST, count, disp);
+            display_show(disp);
+            break;
+        }
+
         if (sound_on)
         playSound(4);
 
@@ -3364,6 +3385,15 @@ void handleInput(display_context_t disp, sprite_t *contr)
         switch (input_mapping)
         {
         case file_manager:
+            if (nso_mode && select_mode && count != 0)
+            {
+                if (cursor % NSO_COLS > 0) cursor--;
+                while (!(disp = display_lock()));
+                clearScreen(disp);
+                display_dir(list, cursor, page, MAX_LIST, count, disp);
+                display_show(disp);
+                break;
+            }
             if (select_mode)
             {
                 if (count != 0 && scroll_behaviour == 0 && cursor - 20 >= 0)
@@ -3412,6 +3442,15 @@ void handleInput(display_context_t disp, sprite_t *contr)
         switch (input_mapping)
         {
         case file_manager:
+            if (nso_mode && select_mode && count != 0)
+            {
+                if (cursor % NSO_COLS < NSO_COLS - 1 && cursor + 1 < count) cursor++;
+                while (!(disp = display_lock()));
+                clearScreen(disp);
+                display_dir(list, cursor, page, MAX_LIST, count, disp);
+                display_show(disp);
+                break;
+            }
 
             if (select_mode)
             {
@@ -4057,8 +4096,12 @@ void handleInput(display_context_t disp, sprite_t *contr)
         switch (input_mapping)
         {
             case file_manager:
-                showAboutScreen(disp);
-                input_mapping = control_screen;
+                nso_mode = !nso_mode;
+                nso_free_cache();
+                while (!(disp = display_lock()));
+                clearScreen(disp);
+                display_dir(list, cursor, page, MAX_LIST, count, disp);
+                display_show(disp);
                 break;
 
             case mempak_menu:
